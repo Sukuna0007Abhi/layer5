@@ -10,9 +10,9 @@ import { FaUsers } from "@react-icons/all-files/fa/FaUsers";
 import { Link } from "gatsby";
 
 // Dynamically import heavy calendar components
-const FullCalendar = lazy(() => 
-  import("@fullcalendar/react").then(module => ({ 
-    default: module.default 
+const FullCalendar = lazy(() =>
+  import("@fullcalendar/react").then(module => ({
+    default: module.default
   })).catch(() => ({
     default: () => <div>Calendar failed to load</div>
   }))

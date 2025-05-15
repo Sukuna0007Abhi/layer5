@@ -1,10 +1,10 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from "react";
 
 // Lazy load dialog components
-const Modal = lazy(() => import('@mui/material/Modal'));
-const Dialog = lazy(() => import('@mui/material/Dialog'));
-const DialogContent = lazy(() => import('@mui/material/DialogContent'));
-const DialogTitle = lazy(() => import('@mui/material/DialogTitle'));
+const Modal = lazy(() => import("@mui/material/Modal"));
+const Dialog = lazy(() => import("@mui/material/Dialog"));
+const DialogContent = lazy(() => import("@mui/material/DialogContent"));
+const DialogTitle = lazy(() => import("@mui/material/DialogTitle"));
 
 export const LazyModal = (props) => (
   <Suspense fallback={<div>Loading...</div>}>

@@ -799,9 +799,9 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
       pageTypes.forEach(({ suffix, file }) => {
         const path = `/projects/sistent/components/${name}${suffix}`;
         const componentPath = `./src/sections/Projects/Sistent/components/${name}/${file}`;
-        
+
         // Check if the file exists before trying to create the page
-        if (require('fs').existsSync(componentPath)) {
+        if (require("fs").existsSync(componentPath)) {
           try {
             createPage({
               path,
