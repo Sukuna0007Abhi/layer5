@@ -275,6 +275,12 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
     redirectInBrowser: true,
     isPermanent: true,
   });
+  createRedirect({
+    fromPath: "/blog/meshery/getting-started-with-meshery-wsl2-and-k3d",
+    toPath: "/blog/2019/07/09/getting-started-with-meshery-wsl2-k3d",
+    redirectInBrowser: true,
+    isPermanent: true,
+  });
 
   //****
   // External Resource Redirects
@@ -594,16 +600,37 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
   const singleWorkshop = res.data.singleWorkshop.nodes;
   const labs = res.data.labs.nodes;
 
-  // Handle events pagination
+  // Create Events List Pages with pagination
+  const publishedEvents = events.filter(event => event.frontmatter.published === true);
   paginate({
     createPage: envCreatePage,
-    items: events,
+    items: publishedEvents,
     itemsPerPage: 9,
     pathPrefix: "/community/events",
-    component: EventsTemplate,
-    context: {
-      basePath: "/community/events"
+    component: path.resolve("./src/templates/events.js"),
+    context: { 
+      basePath: "/community/events",
+      numEventPages: Math.ceil(publishedEvents.length / 9),
+      currentPage: 1,
+      skip: 0,
+      limit: 9
     }
+  });
+
+  // Create Individual Event Pages
+  publishedEvents.forEach((event, index) => {
+    const previous = index === events.length - 1 ? null : events[index + 1];
+    const next = index === 0 ? null : events[index - 1];
+
+    createPage({
+      path: event.fields.slug,
+      component: EventTemplate,
+      context: {
+        slug: event.fields.slug,
+        previous,
+        next,
+      },
+    });
   });
 
   blogs.forEach((blog) => {
@@ -664,16 +691,6 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
       component: BookPostTemplate,
       context: {
         slug: book.fields.slug,
-      },
-    });
-  });
-
-  events.forEach((event) => {
-    envCreatePage({
-      path: event.fields.slug,
-      component: EventTemplate,
-      context: {
-        slug: event.fields.slug,
       },
     });
   });

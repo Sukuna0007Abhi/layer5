@@ -11,34 +11,55 @@ import RssFeedIcon from "../../assets/images/socialIcons/rss-sign.svg";
 const Meetups = ({ data, pageContext }) => {
   const [active, setActive] = useState("all");
 
+  if (!data || !data.allCategories || !data.allCategories.nodes) {
+    return (
+      <MeetupStyle>
+        <PageHeader title="Events" path="Community/Events" img={RssFeedIcon} feedlink="/events/feed.xml" />
+        <h2 className="event-subhead">Join Layer5 at these events</h2>
+        <Container>
+          <p style={{ textAlign: "center", margin: "2rem 0" }}>No events available.</p>
+        </Container>
+      </MeetupStyle>
+    );
+  }
+
   const sortEvents = (nodes) => {
-    return nodes ? nodes.slice().sort((first, second) =>
-      new Date(second.frontmatter.date.replace(/(st|nd|rd|th),/g, "")) -
-      new Date(first.frontmatter.date.replace(/(st|nd|rd|th),/g, ""))) : [];
+    if (!nodes || !Array.isArray(nodes)) return [];
+    return nodes.slice().sort((first, second) => {
+      const date1 = first?.frontmatter?.date?.replace(/(st|nd|rd|th),/g, "");
+      const date2 = second?.frontmatter?.date?.replace(/(st|nd|rd|th),/g, "");
+      if (!date1 || !date2) return 0;
+      return new Date(date2) - new Date(date1);
+    });
   };
 
   const getFilteredEvents = () => {
+    const nodes = data.allCategories.nodes;
+    if (!nodes || !Array.isArray(nodes)) return [];
+    
     switch (active) {
       case "events":
-        return sortEvents(data.allEvents.nodes);
+        return sortEvents(nodes.filter(node => node?.frontmatter?.type === "Event"));
       case "workshops":
-        return sortEvents(data.allWorkshops.nodes);
+        return sortEvents(nodes.filter(node => node?.frontmatter?.type === "Workshop"));
       case "meetups":
-        return sortEvents(data.allMeetups.nodes);
-      case "all":
+        return sortEvents(nodes.filter(node => node?.frontmatter?.type === "Meetups"));
       default:
-        return sortEvents(data.allCategories.nodes);
+        return sortEvents(nodes);
     }
   };
 
   const filteredEvents = getFilteredEvents();
-  const showPagination = active === "all";
+  const previousUrl = pageContext?.currentPage > 2
+    ? `/community/events/${pageContext.currentPage - 1}`
+    : "/community/events";
+  const nextUrl = `/community/events/${(pageContext?.currentPage || 1) + 1}`;
 
   return (
     <MeetupStyle>
       <PageHeader title="Events" path="Community/Events" img={RssFeedIcon} feedlink="/events/feed.xml" />
       <h2 className="event-subhead">Join Layer5 at these events</h2>
-      <UpcomingEvents data={data.allUpcoming} />
+      {data.allUpcoming?.nodes?.length > 0 && <UpcomingEvents data={data.allUpcoming} />}
       <Container>
         <div className="filterBtns">
           <Button className={active === "all" ? "active" : ""} onClick={() => setActive("all")} title="All" />
@@ -48,14 +69,27 @@ const Meetups = ({ data, pageContext }) => {
         </div>
         <div>
           <Row style={{ flexWrap: "wrap" }}>
-            {filteredEvents.map(item => (
-              <Col $xs={12} $sm={6} $lg={4} key={item.id}>
-                <Card frontmatter={item.frontmatter} fields={item.fields} />
+            {filteredEvents.length === 0 ? (
+              <Col $xs={12}>
+                <p style={{ textAlign: "center", margin: "2rem 0" }}>No events found.</p>
               </Col>
-            ))}
+            ) : (
+              filteredEvents.map(item => (
+                <Col $xs={12} $sm={6} $lg={4} key={item.id}>
+                  <Card frontmatter={item.frontmatter} fields={item.fields} />
+                </Col>
+              ))
+            )}
           </Row>
         </div>
-        {showPagination && <Pager pageContext={pageContext} text={"Events"} />}
+        {pageContext?.numberOfPages > 1 && active === "all" && filteredEvents.length > 0 && (
+          <Pager
+            previousUrl={previousUrl}
+            nextUrl={nextUrl}
+            currentPage={pageContext.currentPage || 1}
+            totalPages={pageContext.numberOfPages}
+          />
+        )}
       </Container>
     </MeetupStyle>
   );
