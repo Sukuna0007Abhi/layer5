@@ -36,7 +36,7 @@ const Meetups = ({ data, pageContext }) => {
   const getFilteredEvents = () => {
     const nodes = data.allCategories.nodes;
     if (!nodes || !Array.isArray(nodes)) return [];
-    
+
     switch (active) {
       case "events":
         return sortEvents(nodes.filter(node => node?.frontmatter?.type === "Event"));

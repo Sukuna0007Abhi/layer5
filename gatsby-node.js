@@ -608,7 +608,7 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
     itemsPerPage: 9,
     pathPrefix: "/community/events",
     component: path.resolve("./src/templates/events.js"),
-    context: { 
+    context: {
       basePath: "/community/events",
       numEventPages: Math.ceil(publishedEvents.length / 9),
       currentPage: 1,
