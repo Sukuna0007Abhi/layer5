@@ -401,19 +401,25 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
 
   const envCreatePage = (props) => {
     if (process.env.CI === "true") {
-      const { path, ...rest } = props;
+      const { path: pagePath, ...rest } = props;
 
+      // Ensure path is properly formatted
+      const normalizedPath = pagePath.endsWith("/") ? pagePath.slice(0, -1) : pagePath;
+      const htmlPath = normalizedPath === "" ? "index.html" : `${normalizedPath}.html`;
+
+      // Create redirect
       createRedirect({
-        fromPath: `/${path}/`,
-        toPath: `/${path}`,
+        fromPath: pagePath.endsWith("/") ? pagePath : `${pagePath}/`,
+        toPath: pagePath,
         redirectInBrowser: true,
         isPermanent: true,
       });
 
+      // Create the actual page
       return createPage({
-        path: `${path}.html`,
-        matchPath: path,
         ...rest,
+        path: htmlPath,
+        matchPath: pagePath,
       });
     }
     return createPage(props);
@@ -588,12 +594,16 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
   const singleWorkshop = res.data.singleWorkshop.nodes;
   const labs = res.data.labs.nodes;
 
+  // Handle events pagination
   paginate({
     createPage: envCreatePage,
     items: events,
     itemsPerPage: 9,
     pathPrefix: "/community/events",
     component: EventsTemplate,
+    context: {
+      basePath: "/community/events"
+    }
   });
 
   blogs.forEach((blog) => {
@@ -799,13 +809,17 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
       pageTypes.forEach(({ suffix, file }) => {
         const path = `/projects/sistent/components/${name}${suffix}`;
         const componentPath = `./src/sections/Projects/Sistent/components/${name}/${file}`;
-        try {
-          createPage({
-            path,
-            component: require.resolve(componentPath),
-          });
-        } catch (error) {
-          console.error(`Error creating page for ${path}:`, error);
+
+        // Check if the file exists before trying to create the page
+        if (require("fs").existsSync(componentPath)) {
+          try {
+            createPage({
+              path,
+              component: require.resolve(componentPath),
+            });
+          } catch (error) {
+            console.error(`Error creating page for ${path}:`, error);
+          }
         }
       });
     });
@@ -1122,4 +1136,33 @@ exports.onPostBuild = async ({ graphql, reporter }) => {
   // Optionally, write the result to a file for easier inspection
   const outputPath = path.resolve(__dirname, "public", "query-result.json");
   fs.writeFileSync(outputPath, JSON.stringify(result, null, 2));
+
+  // Additional error handling for CI builds
+  if (process.env.CI === "true") {
+    // Ensure public directory exists
+    if (!fs.existsSync("public")) {
+      reporter.panic("Public directory does not exist");
+    }
+
+    // Validate generated HTML files
+    const htmlFiles = fs.readdirSync("public").filter(file => file.endsWith(".html"));
+    if (htmlFiles.length === 0) {
+      reporter.panic("No HTML files were generated in the public directory");
+    }
+
+    // Log build completion for CI
+    reporter.info(`Build completed successfully with ${htmlFiles.length} HTML files`);
+
+    // Write build stats for Lighthouse CI
+    const buildStats = {
+      timestamp: new Date().toISOString(),
+      totalPages: result.data.allSitePage.nodes.length,
+      htmlFiles: htmlFiles.length
+    };
+
+    fs.writeFileSync(
+      path.resolve(__dirname, "public", "build-stats.json"),
+      JSON.stringify(buildStats, null, 2)
+    );
+  }
 };
