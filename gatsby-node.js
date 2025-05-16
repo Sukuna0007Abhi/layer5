@@ -437,7 +437,7 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
   );
   const blogTagListTemplate = path.resolve("src/templates/blog-tag-list.js");
 
-  const EventsTemplate = path.resolve("src/templates/events.js");
+
 
   const EventTemplate = path.resolve("src/templates/event-single.js");
 

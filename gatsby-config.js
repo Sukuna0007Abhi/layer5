@@ -1,7 +1,5 @@
 /* eslint-env node */
 
-const path = require("path");
-
 module.exports = {
   siteMetadata: {
     title: "Layer5 - Expect more from your infrastructure",
@@ -23,6 +21,7 @@ module.exports = {
   },
   trailingSlash: "never",
   plugins: [
+    "gatsby-plugin-styled-components",
     {
       resolve: "gatsby-plugin-webpack-bundle-analyser-v2",
       options: {
@@ -411,12 +410,6 @@ module.exports = {
             title: "Layer5 Events"
           },
         ],
-      },
-    },
-    {
-      resolve: "gatsby-plugin-styled-components",
-      options: {
-        minify: false,
       },
     },
     {
