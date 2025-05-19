@@ -1024,7 +1024,7 @@ exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
         url: require.resolve("url/"),
       }
     },
-    // Add this to handle dynamic requires
+    // Adding this to handle dynamic requires
     ignoreWarnings: [
       {
         module: /node_modules\/gatsby-plugin-mdx\/dist\/cache-helpers.js/,
