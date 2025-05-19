@@ -1,5 +1,5 @@
 {
-  "name": "Layer5",
+  "name": "layer5",
   "description": "Our cloud native application and infrastructure management software enables organizations to expect more from their infrastructure. At Layer5, we believe collaboration enables innovation, and infrastructure enables collaboration",
   "version": "1.0.0",
   "private": true,
@@ -16,8 +16,8 @@
     "dev": "npm run develop",
     "start": "npm run develop",
     "serve": "gatsby serve",
-    "lint": "eslint --fix .",
-    "checklint": "eslint .",
+    "lint": "NODE_ENV=test eslint --fix .",
+    "checklint": "NODE_ENV=test eslint .",
     "pretest": "eslint --ignore-path .gitignore .",
     "preload-fonts": "gatsby-preload-fonts",
     "deploy": "gatsby build && gh-pages -d public -b master",
@@ -64,7 +64,7 @@
     "gatsby-plugin-image": "^3.11.0",
     "gatsby-plugin-loadable-components-ssr": "^4.3.2",
     "gatsby-plugin-manifest": "^5.11.0",
-    "gatsby-plugin-mdx": "3.20.0",
+    "gatsby-plugin-mdx": "^5.14.1",
     "gatsby-plugin-meta-redirect": "github:layer5labs/gatsby-plugin-meta-redirect",
     "gatsby-plugin-preload-fonts": "^4.11.0",
     "gatsby-plugin-robots-txt": "^1.8.0",
@@ -124,6 +124,7 @@
     "@babel/eslint-parser": "^7.22.15",
     "babel-plugin-module-resolver": "^5.0.0",
     "cpx": "^1.5.0",
+    "css-loader": "^7.1.2",
     "env-cmd": "^10.1.0",
     "eslint": "^8.46.0",
     "eslint-plugin-react": "^7.37.3",
@@ -131,6 +132,8 @@
     "gh-pages": "^6.0.0",
     "husky": "^8.0.3",
     "rimraf": "^5.0.1",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.99.8",
     "webpack-cli": "^6.0.1"
   }
 }

@@ -787,8 +787,11 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
     }
   });
 
+  // Create pages for components
   const components = componentsData.map((component) => component.src.replace("/", ""));
   const createComponentPages = (createPage, components) => {
+  // Define which components should only have index pages
+    const indexOnlyComponents = ["icons"];
     const pageTypes = [
       { suffix: "", file: "index.js" },
       { suffix: "/guidance", file: "guidance.js" },
@@ -797,15 +800,29 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
 
     components.forEach((name) => {
       pageTypes.forEach(({ suffix, file }) => {
+
+        // Skip guidance and code pages for specific components
+        if (indexOnlyComponents.includes(name) && file !== "index.js") {
+          return;
+        }
         const path = `/projects/sistent/components/${name}${suffix}`;
         const componentPath = `./src/sections/Projects/Sistent/components/${name}/${file}`;
+
         try {
-          createPage({
-            path,
-            component: require.resolve(componentPath),
-          });
+        // Check if file exists before attempting to create the page
+          if ( require.resolve(componentPath)){
+            createPage({
+              path,
+              component: require.resolve(componentPath),
+            });
+          }
         } catch (error) {
-          console.error(`Error creating page for ${path}:`, error);
+          if (file === "index.js") {
+            console.error(`Error: Required index file not found for ${path}`);
+          } else {
+          // Log a warning instead of throwing an error
+            console.warn(`Warning: Component file not found for ${path}. Skipping page creation.`);
+          }
         }
       });
     });
@@ -975,6 +992,51 @@ exports.onCreateNode = ({ node, actions, getNode }) => {
       onCreateChapterNode({ actions, node, slug });
       return;
     }
+  }
+};
+//NEEDED
+exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
+  actions.setWebpackConfig({
+    module: {
+      rules: [
+        {
+          test: /\.css$/,
+          use: [
+            "style-loader",
+            {
+              loader: "css-loader",
+              options: {
+                esModule: false,
+                modules: {
+                  auto: true,
+                  localIdentName: "[name]__[local]--[hash:base64:5]"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    resolve: {
+      fallback: {
+        path: require.resolve("path-browserify"),
+        process: require.resolve("process/browser"),
+        url: require.resolve("url/"),
+      },
+    }
+  });
+
+  if (stage === "build-javascript") {
+    const config = getConfig();
+    const miniCssExtractPlugin = config.plugins.find(
+      (plugin) => plugin.constructor.name === "MiniCssExtractPlugin"
+    );
+
+    if (miniCssExtractPlugin) {
+      miniCssExtractPlugin.options.ignoreOrder = true;
+    }
+
+    actions.replaceWebpackConfig(config);
   }
 };
 
