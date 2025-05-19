@@ -1022,8 +1022,14 @@ exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
         path: require.resolve("path-browserify"),
         process: require.resolve("process/browser"),
         url: require.resolve("url/"),
-      },
-    }
+      }
+    },
+    // Add this to handle dynamic requires
+    ignoreWarnings: [
+      {
+        module: /node_modules\/gatsby-plugin-mdx\/dist\/cache-helpers.js/,
+      }
+    ]
   });
 
   if (stage === "build-javascript") {
