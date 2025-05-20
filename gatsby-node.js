@@ -1023,6 +1023,7 @@ exports.onCreateNode = ({ node, actions, getNode }) => {
 };
 //NEEDED
 exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
+  // Base webpack configuration that applies to all stages
   actions.setWebpackConfig({
     module: {
       rules: [
@@ -1041,6 +1042,22 @@ exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
               }
             }
           ]
+        },
+        // Adding this rule to handle shader code properly
+        {
+          test: /\.(js|jsx)$/,
+          exclude: /node_modules/,
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: ["@babel/preset-env", "@babel/preset-react"],
+            },
+          },
+        },
+        // Adding this rule for raw shader files
+        {
+          test: /\.(glsl|vert|frag)$/,
+          use: "raw-loader",
         }
       ]
     },
@@ -1051,7 +1068,7 @@ exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
         url: require.resolve("url/"),
       }
     },
-    // Adding this to handle dynamic requires
+    // Handle dynamic requires
     ignoreWarnings: [
       {
         module: /node_modules\/gatsby-plugin-mdx\/dist\/cache-helpers.js/,
@@ -1059,14 +1076,32 @@ exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
     ]
   });
 
-  if (stage === "build-javascript") {
+  // Stage-specific configurations
+  if (stage === "build-javascript" || stage === "build-html" || stage === "develop-html") {
     const config = getConfig();
+    
+    // Handle CSS extraction plugin
     const miniCssExtractPlugin = config.plugins.find(
       (plugin) => plugin.constructor.name === "MiniCssExtractPlugin"
     );
 
     if (miniCssExtractPlugin) {
       miniCssExtractPlugin.options.ignoreOrder = true;
+    }
+
+    // Special handling for HTML build stages
+    if (stage === "build-html" || stage === "develop-html") {
+      actions.setWebpackConfig({
+        module: {
+          rules: [
+            {
+              // This prevents issues with Three.js and canvas during SSR
+              test: /canvas|three\/examples\/js/,
+              use: 'null-loader',
+            }
+          ]
+        }
+      });
     }
 
     actions.replaceWebpackConfig(config);
@@ -1140,31 +1175,6 @@ const createSectionPage = ({ envCreatePage, node }) => {
       permalink,
     },
   });
-};
-
-exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
-  actions.setWebpackConfig({
-    resolve: {
-      fallback: {
-        path: require.resolve("path-browserify"),
-        process: require.resolve("process/browser"),
-        url: require.resolve("url/"),
-      },
-    },
-  });
-
-  if (stage === "build-javascript") {
-    const config = getConfig();
-    const miniCssExtractPlugin = config.plugins.find(
-      (plugin) => plugin.constructor.name === "MiniCssExtractPlugin"
-    );
-
-    if (miniCssExtractPlugin) {
-      miniCssExtractPlugin.options.ignoreOrder = true;
-    }
-
-    actions.replaceWebpackConfig(config);
-  }
 };
 
 exports.createSchemaCustomization = ({ actions }) => {
