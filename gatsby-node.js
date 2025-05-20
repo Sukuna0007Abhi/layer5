@@ -835,15 +835,20 @@ exports.createPages = async ({ actions, graphql, reporter }) => {
         const path = `/projects/sistent/components/${name}${suffix}`;
         const componentPath = `./src/sections/Projects/Sistent/components/${name}/${file}`;
 
-        // Check if the file exists before trying to create the page
-        if (require("fs").existsSync(componentPath)) {
+        
           try {
-            createPage({
+            // Check if the file exists before trying to create the page
+        if (require.resolve(componentPath)) {
+           createPage({
               path,
               component: require.resolve(componentPath),
-            });
+            })
+        }
           } catch (error) {
-            console.error(`Error creating page for ${path}:`, error);
+            if (file === "index.js") {
+            console.error(`Error:Required Index file not found for ${path}`);
+          } else {
+            console.warn(`Warning:Component File not Found ${path}. Skipping Page Creation.`);
           }
         }
       });
