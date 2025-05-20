@@ -1021,59 +1021,84 @@ exports.onCreateNode = ({ node, actions, getNode }) => {
     }
   }
 };
-//NEEDED
-exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
+
+// Add or replace the onCreateWebpackConfig export with this enhanced version
+exports.onCreateWebpackConfig = ({ actions, stage, getConfig, loaders }) => {
   // Base webpack configuration that applies to all stages
   actions.setWebpackConfig({
     module: {
       rules: [
+        // Application CSS files with CSS modules support
         {
           test: /\.css$/,
+          exclude: [/node_modules\/.*\.css$/, /fonts\.css$/],
           use: [
-            "style-loader",
+            stage === 'develop' ? 'style-loader' : loaders.miniCssExtract(),
             {
-              loader: "css-loader",
+              loader: 'css-loader',
               options: {
-                esModule: false,
+                importLoaders: 1,
+                sourceMap: stage === 'develop',
                 modules: {
                   auto: true,
-                  localIdentName: "[name]__[local]--[hash:base64:5]"
-                }
-              }
-            }
-          ]
-        },
-        // Adding this rule to handle shader code properly
-        {
-          test: /\.(js|jsx)$/,
-          exclude: /node_modules/,
-          use: {
-            loader: "babel-loader",
-            options: {
-              presets: ["@babel/preset-env", "@babel/preset-react"],
+                  localIdentName: '[name]__[local]--[hash:base64:5]',
+                },
+              },
             },
-          },
+            {
+              loader: 'postcss-loader',
+              options: {
+                postcssOptions: {
+                  parser: 'postcss-safe-parser',
+                  plugins: [
+                    require('postcss-flexbugs-fixes'),
+                    require('postcss-preset-env')({
+                      autoprefixer: { flexbox: 'no-2009' },
+                      stage: 3,
+                    }),
+                  ],
+                },
+                sourceMap: stage === 'develop',
+              },
+            },
+          ],
         },
-        // Adding this rule for raw shader files
+        // Node modules CSS files - simpler processing
+        {
+          test: /\.css$/,
+          include: [/node_modules\/.*\.css$/, /fonts\.css$/],
+          use: [
+            stage === 'develop' ? 'style-loader' : loaders.miniCssExtract(),
+            'css-loader',
+          ],
+        },
+        // Shader files
         {
           test: /\.(glsl|vert|frag)$/,
-          use: "raw-loader",
-        }
-      ]
+          use: 'raw-loader',
+        },
+      ],
     },
     resolve: {
       fallback: {
-        path: require.resolve("path-browserify"),
-        process: require.resolve("process/browser"),
-        url: require.resolve("url/"),
-      }
+        path: require.resolve('path-browserify'),
+        process: require.resolve('process/browser'),
+        url: require.resolve('url/'),
+        fs: false,
+        crypto: false,
+      },
+      // Ensure node_modules are properly resolved
+      modules: ['node_modules'],
+      alias: {
+        'three': require.resolve('three'),
+      },
     },
-    // Handle dynamic requires
     ignoreWarnings: [
-      {
-        module: /node_modules\/gatsby-plugin-mdx\/dist\/cache-helpers.js/,
-      }
-    ]
+      { module: /node_modules\/gatsby-plugin-mdx\/dist\/cache-helpers.js/ },
+      { message: /Mini CSS Extract Plugin/ },
+      { message: /Unknown word/ },
+      { message: /Critical dependency/ },
+    ],
   });
 
   // Stage-specific configurations
@@ -1096,17 +1121,58 @@ exports.onCreateWebpackConfig = ({ actions, stage, getConfig }) => {
           rules: [
             {
               // This prevents issues with Three.js and canvas during SSR
-              test: /canvas|three\/examples\/js/,
+              test: /canvas|three|webgl|pixi|gsap|animejs/,
               use: 'null-loader',
-            }
-          ]
-        }
+            },
+          ],
+        },
       });
     }
 
     actions.replaceWebpackConfig(config);
   }
 };
+
+// Add or enhance the onPostBuild export with this version
+exports.onPostBuild = async ({ graphql, reporter }) => {
+  reporter.info('Build completed successfully');
+  
+  // Log build stats
+  try {
+    const result = await graphql(`
+      {
+        allSitePage {
+          totalCount
+        }
+      }
+    `);
+    
+    if (result.data) {
+      reporter.info(`Total pages built: ${result.data.allSitePage.totalCount}`);
+    }
+    
+    // Write build stats for performance analysis
+    const buildStats = {
+      timestamp: new Date().toISOString(),
+      totalPages: result.data?.allSitePage?.totalCount || 0,
+    };
+
+    const publicDir = path.resolve('public');
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+
+    fs.writeFileSync(
+      path.resolve(publicDir, 'build-stats.json'),
+      JSON.stringify(buildStats, null, 2)
+    );
+    
+    reporter.info('Build stats written to public/build-stats.json');
+  } catch (error) {
+    reporter.warn(`Error generating build stats: ${error.message}`);
+  }
+};
+
 
 const createCoursesListPage = ({ envCreatePage, node }) => {
   const { learnpath, slug, pageType, permalink } = node.fields;
@@ -1209,60 +1275,90 @@ exports.createSchemaCustomization = ({ actions }) => {
 const fs = require("fs");
 
 exports.onPostBuild = async ({ graphql, reporter }) => {
-  const result = await graphql(`
-    {
-      allSitePage {
-        nodes {
-          path
-          matchPath
+  reporter.info('Build completed successfully');
+  
+  // Log build stats
+  try {
+    const result = await graphql(`
+      {
+        allSitePage {
+          totalCount
+          nodes {
+            path
+            matchPath
+          }
+        }
+        site {
+          siteMetadata {
+            siteUrl
+          }
         }
       }
-      site {
-        siteMetadata {
-          siteUrl
-        }
-      }
+    `);
+    
+    if (result.errors) {
+      reporter.panicOnBuild("Error while running GraphQL query.");
+      return;
     }
-  `);
-
-  if (result.errors) {
-    reporter.panicOnBuild("Error while running GraphQL query.");
-    return;
-  }
-
-  // Log the result to the console
-  console.log("GraphQL query result:", JSON.stringify(result, null, 2));
-
-  // Optionally, write the result to a file for easier inspection
-  const outputPath = path.resolve(__dirname, "public", "query-result.json");
-  fs.writeFileSync(outputPath, JSON.stringify(result, null, 2));
-
-  // Additional error handling for CI builds
-  if (process.env.CI === "true") {
-    // Ensure public directory exists
-    if (!fs.existsSync("public")) {
-      reporter.panic("Public directory does not exist");
+    
+    if (result.data) {
+      reporter.info(`Total pages built: ${result.data.allSitePage.totalCount}`);
     }
-
-    // Validate generated HTML files
-    const htmlFiles = fs.readdirSync("public").filter(file => file.endsWith(".html"));
-    if (htmlFiles.length === 0) {
-      reporter.panic("No HTML files were generated in the public directory");
-    }
-
-    // Log build completion for CI
-    reporter.info(`Build completed successfully with ${htmlFiles.length} HTML files`);
-
-    // Write build stats for Lighthouse CI
+    
+    // Write build stats for performance analysis
     const buildStats = {
       timestamp: new Date().toISOString(),
-      totalPages: result.data.allSitePage.nodes.length,
-      htmlFiles: htmlFiles.length
+      totalPages: result.data?.allSitePage?.totalCount || 0,
     };
 
+    const publicDir = path.resolve('public');
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+
     fs.writeFileSync(
-      path.resolve(__dirname, "public", "build-stats.json"),
+      path.resolve(publicDir, 'build-stats.json'),
       JSON.stringify(buildStats, null, 2)
     );
+    
+    reporter.info('Build stats written to public/build-stats.json');
+    
+    // Log the result to the console
+    console.log("GraphQL query result:", JSON.stringify(result, null, 2));
+
+    // Optionally, write the result to a file for easier inspection
+    const outputPath = path.resolve(__dirname, "public", "query-result.json");
+    fs.writeFileSync(outputPath, JSON.stringify(result, null, 2));
+
+    // Additional error handling for CI builds
+    if (process.env.CI === "true") {
+      // Ensure public directory exists
+      if (!fs.existsSync("public")) {
+        reporter.panic("Public directory does not exist");
+      }
+
+      // Validate generated HTML files
+      const htmlFiles = fs.readdirSync("public").filter(file => file.endsWith(".html"));
+      if (htmlFiles.length === 0) {
+        reporter.panic("No HTML files were generated in the public directory");
+      }
+
+      // Log build completion for CI
+      reporter.info(`Build completed successfully with ${htmlFiles.length} HTML files`);
+
+      // Write build stats for Lighthouse CI
+      const ciStats = {
+        timestamp: new Date().toISOString(),
+        totalPages: result.data.allSitePage.nodes.length,
+        htmlFiles: htmlFiles.length
+      };
+
+      fs.writeFileSync(
+        path.resolve(__dirname, "public", "ci-build-stats.json"),
+        JSON.stringify(ciStats, null, 2)
+      );
+    }
+  } catch (error) {
+    reporter.warn(`Error generating build stats: ${error.message}`);
   }
 };
